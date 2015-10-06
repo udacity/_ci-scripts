@@ -37,9 +37,9 @@ function notify_datadog {
 
 function deploy {
     local app_id=$(cat ${1} | json_lookup id)
-    local deploy_output=$(curl -X PUT -H "Content-Type: application/json" ${MARATHON_URL}/v2/apps/${app_id}?force=true -d@${1} \
-                          && echo \
-                          && curl -X POST ${MARATHON_URL}/v2/apps/${app_id}/restart)
+    envtpl < ${1} | \
+      curl -X PUT -H "Content-Type: application/json" ${MARATHON_URL}/v2/apps/${app_id}?force=true -d@-
+    curl -X POST ${MARATHON_URL}/v2/apps/${app_id}/restart
     notify_datadog info "https://circleci.com/gh/${DEPLOY_ID}/${CIRCLE_BUILD_NUM}"
 }
 
