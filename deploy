@@ -26,7 +26,7 @@ function setup_ssh_tunnel {
 function notify_datadog {
     curl  -X POST -H "Content-type: application/json" \
           -d "{
-      \"title\": \"gt-ta-portal deployment: ${1}\",
+      \"title\": \"${DEPLOY_ID} deployment: ${1}\",
       \"text\": \"${2}\",
       \"priority\": \"normal\",
       \"tags\": [\"berlioz-prod\"],
@@ -40,7 +40,7 @@ function deploy {
     local deploy_output=$(curl -X PUT -H "Content-Type: application/json" ${MARATHON_URL}/v2/apps/${app_id}?force=true -d@${1} \
                           && echo \
                           && curl -X POST ${MARATHON_URL}/v2/apps/${app_id}/restart)
-    notify_datadog info "https://circleci.com/gh/udacity/gt-ta-portal/${CIRCLE_BUILD_NUM}"
+    notify_datadog info "https://circleci.com/gh/${DEPLOY_ID}/${CIRCLE_BUILD_NUM}"
 }
 
 function deploy_local {
