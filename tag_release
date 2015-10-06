@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# tag it
+CURRENT_VERSION=$(sed -rn 's/^(VERSION = )(.*)/\2/p' Makefile)
+git tag rel-${CURRENT_VERSION} && git push origin rel-${CURRENT_VERSION}
+
+# bump version
+sed -ri 's/^(VERSION = .*\.)([0-9]+)/echo \1$((\2+1))/ge' Makefile
+NEW_VERSION=$(sed -rn 's/^(VERSION = )(.*)/\2/p' Makefile)
+git add Makefile
+git commit -q -m "bump version -> ${NEW_VERSION}"
+
+# push version edit to master
+git fetch && git rebase '@{upstream}' && git push

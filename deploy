@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -o errexit -o nounset -o pipefail
+function -h {
+    cat <<USAGE
+ USAGE: $NAME deploy app.json
+ USAGE: $NAME deploy_local app.json
+
+USAGE
+}; function --help { -h ;}
+
+NAME=$(basename $0)
+TUNNEL_PORT=${BASTION_TUNNEL_PORT:-9001}
+
+function json_lookup {
+    python -c "import sys, json; print json.load(sys.stdin)['${1}']"
+}
+
+function marathon_master_ip {
+    ssh $BASTION_IP curl -s ${MARATHON_URL}/v2/leader | json_lookup leader
+}
+
+function setup_ssh_tunnel {
+    ssh -qfNL ${1}:$(marathon_master_ip) $BASTION_IP
+}
+
+function notify_datadog {
+    curl  -X POST -H "Content-type: application/json" \
+          -d "{
+      \"title\": \"gt-ta-portal deployment: ${1}\",
+      \"text\": \"${2}\",
+      \"priority\": \"normal\",
+      \"tags\": [\"berlioz-prod\"],
+      \"alert_type\": \"${1}\"
+    }" \
+    https://app.datadoghq.com/api/v1/events?api_key=${DD_API_KEY}
+}
+
+function deploy {
+    local app_id=$(cat ${1} | json_lookup id)
+    local deploy_output=$(curl -X PUT -H "Content-Type: application/json" ${MARATHON_URL}/v2/apps/${app_id}?force=true -d@${1} \
+                          && echo \
+                          && curl -X POST ${MARATHON_URL}/v2/apps/${app_id}/restart)
+    notify_datadog info "https://circleci.com/gh/udacity/gt-ta-portal/${CIRCLE_BUILD_NUM}"
+}
+
+function deploy_local {
+    log "Initializing tunnel to Marathon $(marathon_master_ip) via Bastion ${BASTION_IP} on local port ${TUNNEL_PORT}"
+    setup_ssh_tunnel ${TUNNEL_PORT}
+    log "Starting local deploy for ${1}"
+    MARATHON_URL=http://localhost:${TUNNEL_PORT} deploy ${1}
+}
+
+function log {
+    echo `date +%F\ %T`: "$@"
+}
+
+function failed {
+    log "FAILED: Line: $1, Code: $2"
+    exit $2
+}
+
+trap 'failed ${LINENO} ${$?}' ERR
+
+
+# If less than 1 argument is provided, print usage and exit. At least one
+# argument is required as described in the `USAGE` message.
+[ $# -lt 1 ] && { -h; exit 1; }
+
+if [[ ${1:-} ]] && declare -F | cut -d' ' -f3 | fgrep -qx -- "${1:-}"
+then "$@"
+else main "$@"
+fi
