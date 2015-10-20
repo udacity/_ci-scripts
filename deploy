@@ -26,7 +26,7 @@ function setup_ssh_tunnel {
 function notify_datadog {
     curl  -X POST -H "Content-type: application/json" \
           -d "{
-      \"title\": \"${DEPLOY_ID} deployment: ${1}\",
+      \"title\": \"${DEPLOY_ID}:${_DEPLOY_TARGET} deployment: ${1}\",
       \"text\": \"${2}\",
       \"priority\": \"normal\",
       \"tags\": [\"berlioz-prod\"],
