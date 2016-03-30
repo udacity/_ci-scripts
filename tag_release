@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 
+# Some tools have slightly different options depending on the flavor of UNIX.
+OS_NAME="$(uname)"
+if [ "$OS_NAME" == 'Linux' ]; then
+	SED_USE_EREGEXP='-r'
+else
+	SED_USE_EREGEXP='-E'
+fi
+
 # tag it
-CURRENT_VERSION=$(sed -rn 's/^(VERSION = )(.*)/\2/p' Makefile)
+CURRENT_VERSION=$(sed $SED_USE_EREGEXP -n 's/^(VERSION = )(.*)/\2/p' Makefile)
 git tag rel-${CURRENT_VERSION} && git push origin rel-${CURRENT_VERSION}
 
 # bump version
 sed -ri 's/^(VERSION = .*\.)([0-9]+)/echo \1$((\2+1))/ge' Makefile
-NEW_VERSION=$(sed -rn 's/^(VERSION = )(.*)/\2/p' Makefile)
+NEW_VERSION=$(sed $SED_USE_EREGEXP -n 's/^(VERSION = )(.*)/\2/p' Makefile)
 git add Makefile
 git commit -q -m "bump version -> ${NEW_VERSION}"
 
